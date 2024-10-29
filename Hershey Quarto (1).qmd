@@ -1,0 +1,388 @@
+---
+title: "TIME SERIES FORECASTING OF HERSHEY NET SALES & COST OF SALES."
+author: "Molly McDade | Ann Gray Perdue | Luke White | John Carl Tagbor"
+format: html
+editor: visual
+---
+
+## 1. Introduction and Company Overview
+
+![Hershey Logo](https://1000logos.net/wp-content/uploads/2020/07/Hershey-Logo.png){.centre width="30%"}
+
+### Company Background:
+
+Hershey is a leading company in the confectionery industry, known for producing chocolate, candy, mints, and other snack foods. Founded in 1894 by Milton Hershey, the company is headquartered in Hershey, Pennsylvania.
+
+Hershey's mission is to bring moments of goodness to people by delivering quality confectionery products. Its key products include the iconic Hershey’s Chocolate Bar, Reese’s Peanut Butter Cups, and Kisses. The company also produces a wide range of snacks, baking products, and beverages.
+
+Hershey operates in both domestic and international markets, with its primary revenue coming from North America. It faces competition from companies like Mars, Nestlé, and Mondelez International.
+
+### Motivation for Variables:
+
+![Hershey Product Sales](https://cloudfront-us-east-2.images.arcpublishing.com/reuters/V4HHTJY775JYHMTBQHEPICKZZI.jpg){width="50%"}
+
+**Net Sales:**
+
+-- Net sales represent the total revenue from Hershey’s products after deductions for discounts, allowances, and returns. This variable is a critical indicator of Hershey’s financial performance as it reflects the company’s ability to generate income from its operations.
+
+-- Net sales are influenced by market demand, seasonality, product innovation, and Hershey’s ability to expand into new markets. Understanding future net sales can help predict overall company growth and market share.
+
+**Cost of Sales:**
+
+-- The cost of sales represents the direct costs associated with producing and delivering Hershey’s products. This includes expenses such as raw materials (ex: cocoa, sugar, dairy), labor, and manufacturing overhead.
+
+-- Tracking and forecasting the cost of sales is essential to assessing profitability. If costs rise faster than sales, it could squeeze profit margins. Forecasting this variable helps Hershey plan for cost control strategies and maintain operational efficiency.
+
+## 2. Data and Key Insights
+
+### Data Source:
+
+The data for this analysis was sourced directly from Hershey’s quarterly earnings releases, available on the company’s investor relations website at Hershey Investor Relations. The earnings releases provide detailed insights into Hershey’s financial performance, including key metrics such as net sales and cost of sales. These financial statements are publicly available and serve as a reliable source of up-to-date company data.
+
+You can view the individual reports [here](https://investors.thehersheycompany.com/en_us/home/reports-and-filings/quarterly-reports.html). <br>
+
+### Initial Observations:
+
+![Halloween](https://www.foodbusinessnews.net/ext/resources/2020/11/HersheyHalloween_Lead.jpg?height=900&t=1604939681&width=900){width="50%"}
+
+**Seasonality in sales:** One notable observation in Hershey’s financial data is the pronounced seasonality of its sales. As outlined in the company’s reports, higher net sales are often recorded during specific periods of the year, particularly around major holidays such as Halloween, Christmas, and Easter. These holidays typically drive increased demand for Hershey’s confectionery products.
+
+**Net Sales Growth:** Over the last few years, Hershey has experienced a steady growth in net sales, partly due to product innovation, pricing strategies, and the company's ability to expand into new markets. This upward trend aligns with the broader growth in the snack and confectionery industry.
+
+**Cost of Sales Fluctuations:** The cost of sales has shown periodic fluctuations, driven by factors such as changes in raw material prices (especially cocoa, sugar, and dairy), supply chain constraints, and rising labor costs. There’s a clear relationship between commodity price volatility and cost of sales, which has implications for Hershey’s overall profitability.
+
+**Anomalies:** One anomaly noted in the financial data is the impact of the COVID-19 pandemic on sales and costs in early 2020, when demand for certain products temporarily shifted, and supply chains were disrupted. <br>
+
+## 3. Descriptive Statistics
+
+That data spans Q1 of 2015 to Q4 of 2024. The average net sales over the period under review was \$2.16 billion. This is lower than the all time maximum net sales of \$3.25 billion which was recorded in Q1 of 2024. This supports the assertion of an upward trend in Net Sales over the period. The script below produces Table 3.1 which displays summary statistics for net sales (in Millions).
+
+```{R message=FALSE}
+library(tidyverse)
+library(fpp3)
+library(ggthemes)
+library(gt)
+
+data <- read_csv("https://github.com/lwhite01/Data/blob/main/HersheyData.csv")
+
+data %>% 
+  mutate(FullDate = paste(Year, Quarter, sep='Q')) %>% 
+  select(Year, Quarter, FullDate, everything()) %>% 
+  arrange(FullDate) -> data
+
+###Descriptive Stats of Chosen Variables
+des_NS <- tibble(
+     Mean = mean(data$`Net Sales (in Millions)`),
+     Median = median(data$`Net Sales (in Millions)`),
+     Min = min(data$`Net Sales (in Millions)`),
+     Max = max(data$`Net Sales (in Millions)`),
+) %>% gt() %>% tab_header(
+     title = md("**Summary Statistics**"),
+     subtitle = "Summary Statistics for Net Sales (in Millions)") %>%
+     fmt_number(
+          columns = everything(),
+          decimals = 0,
+          use_seps = TRUE
+     ) %>%
+tab_options(table.width = px(600))
+
+des_NS
+```
+
+<br> Similarly, Hersheys recorded an average cost of saless of \$1.19 billion over the review period. In the last two quarters of the review period, it was more efficient by recording a cost of sales of \$1.53 billion in Q4 2023 and \$1.58 billion in Q1 2024 compared to a period maximum of \$1.67 billion in Q3 2023. The script and Table 3.2 below show summary statistics for cost of sales (in Millions)
+
+```{R}
+des_COS <- tibble(
+     Mean = mean(data$`Cost of Sales (In Millions)`),
+     Median = median(data$`Cost of Sales (In Millions)`),
+     Min = min(data$`Cost of Sales (In Millions)`),
+     Max = max(data$`Cost of Sales (In Millions)`),
+)%>% gt() %>% tab_header(
+     title = md("**Summary Statistics**"),
+     subtitle = "Summary Statistics for Cost of Sales (In Millions)") %>%
+     fmt_number(
+          columns = everything(),
+          decimals = 0,
+          use_seps = TRUE) %>% 
+     tab_options(table.width = px(600))
+
+des_COS
+```
+
+<br> As a result of the high Net Sales of \$3.25 billion compared to the cost of sales of \$1.58 billion in Q1 2024, it recorded an all time income before tax of \$1.68 billion.
+
+<br>
+
+### Time Series Visualization:
+
+The script below produces a visual of the distribution of Net Sales, Cost of Sales and income before tax over the review period.
+
+```{R}
+ggplot(data, aes(x = FullDate)) +
+  geom_line(aes(y = `Net Sales (in Millions)`, color = "Net Sales", group = 1), linewidth = 1) +
+  geom_line(aes(y = `Cost of Sales (In Millions)`, color = "Cost of Sales", group = 1), linewidth = 1) +
+  geom_line(aes(y = `Income before Income Taxes`, 
+                color = "Income Before Taxes", group = 1), linewidth = 1) +
+  labs(title = "Net Sales, Cost of Sales, and Income Before Taxes Over Time",
+       x = "Time (Year and Quarter)",
+       y = "Amount (in Millions)",
+       color = "Legend") -> fullPlot
+
+Q1pos <- grep('Q1',data$FullDate)
+
+fullPlot + geom_vline(xintercept = Q1pos, linetype = "dashed", color = "black")
+```
+
+It is evident from the chart above there is an upward trend for all the variables. Seasonality is also evident. Note that black vertical broken lines represent Q1 of each review year. To investigate seasonality and trend further, it is important to consider a decomposition of these elements. These are produced by the scripts below.
+
+```{R}
+# Make time series tsibble
+
+data %>% 
+  mutate(FullDate=yearquarter(FullDate)) %>%
+  as_tsibble(index=FullDate) %>% 
+  mutate(Quarter = factor(quarter(FullDate)))->data_ts
+
+#### NET SALES Decomposition
+data_ts %>%
+  model(STL=STL(`Net Sales (in Millions)`~trend()+
+                  season(), robust=TRUE)) %>%
+  components() %>% autoplot()+ theme_classic()
+
+#### COST OF SALES Decomposition
+data_ts %>%
+  model(STL=STL(`Cost of Sales (In Millions)`~trend()+
+                  season(), robust=TRUE)) %>%
+  components() %>% autoplot()+ theme_classic()
+```
+
+The charts above confirm the presence of trend and seasonality in the data set. This means it is appropriate to run a time series forecast to predict future net sales and cost of sales. <br>
+
+## 4. Forecasting
+
+### Forecasting Methodology
+
+With the establishment of the data as a suitable time series, the next step would be to select a suitable forecast model. Model Selection: In this project, we used several forecasting models including TSLM (Time Series Linear Model), ETS (Error, Trend, Seasonality), and ARIMA (AutoRegressive Integrated Moving Average) to predict future values of both Net Sales and Cost of Sales. Each model was selected based on its strengths.
+
+-   TSLM was chosen for its ability to model trend and seasonality explicitly, allowing us to incorporate linear relationships over time, including polynomial trends.
+
+-   ETS was used to capture the inherent patterns in the data by decomposing it into error, trend, and seasonality components. This method is highly effective when the data exhibits clear seasonal cycles.
+
+-   ARIMA was selected for its flexibility in handling non-stationary data and its ability to model autocorrelations.
+
+### Model Selection
+
+A combination approach (Combo Model) was employed in all instances to improve forecasting accuracy, with weights assigned to different models. In the model selection for Net Sales, a weight of 0.2 for ARIMA and 0.8 for TSLM were applied to balance their strengths. On the other hand, a weight of 0.1 for ETS and 0.9 for TSLM2 was applied to determine a Combo model for Cost of Sales.
+
+The model performance was evaluated using the Winkler Score, a metric used to assess the accuracy of probabilistic forecasts, and various accuracy metrics to select the best-performing models for future predictions.
+
+```{R warning=FALSE}
+data_ts %>% filter_index(.~"2022 Q2") -> train
+data_ts %>% filter_index("2022 Q3"~"2024 Q1") -> test
+
+###TRAINING THE MODEL TO PREDICT NET SALES & VERIFYING ACCURACY
+train %>% model(TSLM=TSLM(`Net Sales (in Millions)`~trend()+season()),
+                TSLM2=TSLM(`Net Sales (in Millions)`~trend()+ I(trend()^2) + season()),
+                ETS=ETS(`Net Sales (in Millions)`),
+                ARIMA=ARIMA(`Net Sales (in Millions)`)) -> fit
+
+# Accuracy of Models
+
+fit %>% forecast(test) %>%
+  accuracy(data_ts, list(winkler = winkler_score)) %>% gt() %>% 
+     tab_header(title = md("**Winkler Score**")) %>%
+  fmt_number(
+    columns = winkler,
+    decimals = 2,
+    use_seps = TRUE
+  ) %>%
+  tab_options(table.width = px(600))
+
+data_ts %>% stretch_tsibble(.init = 20, .step=7) %>%
+  model(TSLM=TSLM(`Net Sales (in Millions)`~trend()+season()),
+        TSLM2=TSLM(`Net Sales (in Millions)`~trend()+ I(trend()^2) + season()),
+        ARIMA=ARIMA(`Net Sales (in Millions)`),
+        ETS=ETS(`Net Sales (in Millions)`)) %>% 
+  mutate(Combo=0.2*ARIMA+0.8*TSLM2) %>%                 
+  forecast(h=7) %>%
+  accuracy(data_ts) %>% gt() %>% 
+     tab_header(title = md("**Net Sales Model Accuracy**")) %>%
+  fmt_number(
+    columns = everything(),
+    decimals = 2,
+    use_seps = TRUE
+  ) %>% tab_style(
+    style = list(cell_fill(color = "lightblue")),
+    locations = cells_body(rows = .model == "Combo"))
+
+
+###TRAINING THE MODEL TO PREDICT COST OF SALES & VERIFYING ACCURACY
+train %>% model(TSLM=TSLM(`Cost of Sales (In Millions)`~trend()+season()),
+                TSLM2=TSLM(`Cost of Sales (In Millions)`~trend()+ I(trend()^2) + season()),
+                ETS=ETS(`Cost of Sales (In Millions)`),
+                ARIMA=ARIMA(`Cost of Sales (In Millions)`)) -> fitC
+
+# Accuracy of Models
+
+fitC %>% forecast(test) %>%
+  accuracy(data_ts, list(winkler = winkler_score)) %>% gt()%>% 
+     tab_header(title = md("**Winkler Score**")) %>%
+  fmt_number(
+    columns = winkler,
+    decimals = 2,
+    use_seps = TRUE
+  ) %>%
+  tab_options(table.width = px(600))
+
+data_ts %>% stretch_tsibble(.init = 20, .step=7) %>%
+  model(TSLM=TSLM(`Cost of Sales (In Millions)`~trend()+season()),
+        TSLM2=TSLM(`Cost of Sales (In Millions)`~trend()+ I(trend()^2) + season()),
+        ARIMA=ARIMA(`Cost of Sales (In Millions)`),
+        ETS=ETS(`Cost of Sales (In Millions)`)) %>% 
+  mutate(Combo=0.1*ETS+0.9*TSLM2) %>%                 
+  forecast(h=7) %>%
+  accuracy(data_ts) %>% gt()%>% 
+     tab_header(title = md("**Cost of Sales Model Accuracy**")) %>%
+  fmt_number(
+    columns = everything(),
+    decimals = 2,
+    use_seps = TRUE
+  ) %>% tab_style(
+    style = list(cell_fill(color = "lightblue")),
+    locations = cells_body(rows = .model == "TSLM2"))
+
+```
+
+For validation, cross-validation was used with rolling windows to evaluate model performance across different sections of the data. The accuracy of each model was assessed, and TSLM2 and Combo models were chosen as the most accurate for forecasting.
+
+Finally, forecasts were generated for seven quarters, and prediction intervals were calculated to account for uncertainty. Visualizations were created to compare actual data with the model forecasts, providing a clear assessment of each model’s performance. <br>
+
+### Variable 1: Net Sales Forecasting
+
+```{r}
+data_ts %>% model(TSLM2=TSLM(`Net Sales (in Millions)`~trend()+ I(trend()^2) + season()),
+                  ARIMA=ARIMA(`Net Sales (in Millions)`),
+                  ETS=ETS(`Net Sales (in Millions)`)) %>% 
+  mutate(Combo=0.2*ARIMA+0.8*TSLM2) -> fit2
+
+fit2 %>% augment() -> resids2
+
+resids2 %>% autoplot(.resid) + theme_clean()
+
+# Plot Combo Model - best here
+
+data_ts %>% autoplot(`Net Sales (in Millions)`) +
+  autolayer(resids2 %>% filter(.model=="Combo"),.fitted, 
+            lty=2,col="red") +
+  theme_clean() +
+  labs(title = 'Combo Model vs Actual Data')
+
+# Plot TSLM2 Model
+
+data_ts %>% autoplot(`Net Sales (in Millions)`) +
+  autolayer(resids2 %>% filter(.model=="TSLM2"),.fitted, 
+            lty=2,col="red") +
+  theme_clean() +
+  labs(title = 'TSLM2 Model vs Actual Data')
+
+# Plot ARIMA Model
+
+data_ts %>% autoplot(`Net Sales (in Millions)`) +
+  autolayer(resids2 %>% filter(.model=="ARIMA"),.fitted, 
+            lty=2,col="red") +
+  theme_clean() +
+  labs(title = 'ARIMA Model vs Actual Data')
+
+fit2 %>% forecast(h=7) %>% hilo(level=95) %>% gt()
+
+fit2 %>% select(Combo) %>% forecast(h=7) %>% autoplot(level=95) + 
+  autolayer(data_ts, `Net Sales (in Millions)`) +
+  theme_clean() +
+  labs(title = "Hershey's Projected Net Sales for 2024/2025")
+```
+
+Using Combo model, we plotted the projected Net sales for the net 7 quarters.The forecast of our model shows a decrease in net sales in 2024 Q2 and 2025 Q2 and spikes in holiday-heavy quarters like Q3 & Q4 2024 and Q3 & Q4 2025.
+
+-   Q2 2024: Net Sales \$2796.881 M \<- Low 2024
+-   Q3 2024: Net Sales \$3282.364 M \<- High 2024
+-   Q4 2024: Net Sales \$3167.744 M
+-   Q1 2025: Net Sales \$3439.584 M
+-   Q2 2025: Net Sales \$3112.232 M \<- Low 2025
+-   Q3 2025: Net Sales \$3607.611 M \<- High 2025
+-   Q4 2025: Net Sales \$3501.091 M
+
+### Variable 2: Cost of Sales Forecasting
+
+```{r}
+data_ts %>% model(TSLM2=TSLM(`Cost of Sales (In Millions)`~trend()+ I(trend()^2) + season()),
+                  ARIMA=ARIMA(`Cost of Sales (In Millions)`),
+                  ETS=ETS(`Cost of Sales (In Millions)`)) %>% 
+  mutate(Combo=0.1*ETS+0.9*TSLM2) -> fitC2
+
+fitC2 %>% augment() -> residsC2
+
+residsC2 %>% autoplot(.resid) + theme_clean()
+
+# Plot TSLM2 Model - best model here
+
+data_ts %>% autoplot(`Cost of Sales (In Millions)`) +
+  autolayer(residsC2 %>% filter(.model=="TSLM2"),.fitted, 
+            lty=2,col="red") +
+  theme_clean() +
+  labs(title = 'TSLM2 Model vs Actual Data')
+
+
+# Plot ETS Model
+
+data_ts %>% autoplot(`Cost of Sales (In Millions)`) +
+  autolayer(residsC2 %>% filter(.model=="ETS"),.fitted, 
+            lty=2,col="red") +
+  theme_clean() +
+  labs(title = 'ETS Model vs Actual Data')
+
+
+# Plot Combo Model
+
+data_ts %>% autoplot(`Cost of Sales (In Millions)`) +
+  autolayer(residsC2 %>% filter(.model=="Combo"),.fitted, 
+            lty=2,col="red") +
+  theme_clean() +
+  labs(title = 'Combo Model vs Actual Data')
+```
+
+The forecast of our model shows a decrease in the cost of sales in 2024 Q2 and 2025 Q2 and spikes in the cost of sales in holiday-heavy quarters like Q3 2024 and Q3 2025. This may reflect a relaxed sales cost strategy to compliment relaxed sales in the off holiday season.
+
+-   Q2 2024: Cost of Sales \$1532.371 M \<-Low 2024
+-   Q3 2024: Cost of Sales \$1811.283 M \<- High 2024
+-   Q4 2024: Cost of Sales \$1805.500 M
+-   Q1 2025: Cost of Sales \$1830.267 M
+-   Q2 2025: Cost of Sales \$1717.648 M \<- Low 2025
+-   Q3 2025: Cost of Sales \$2002.222 M \<- High 2024
+-   Q4 2025: Cost of Sales \$2002.101 M
+
+```{r}
+fitC2 %>% forecast(h=7) %>% hilo(level=95) %>% gt()
+
+fitC2 %>% select(TSLM2) %>% forecast(h=7) %>% autoplot(level=95) + 
+  autolayer(data_ts, `Cost of Sales (In Millions)`) +
+  theme_clean() +
+  labs(title = "Hershey's Projected Cost of Sales for 2024/2025")
+```
+
+### 5. Results and Business Impact
+
+(https://i.pinimg.com/originals/67/86/c8/6786c8b30c15d04beb04ccb6ece5fb04.jpg){.centre width="30%"}
+
+**Forecasting Results:** In summary, our team discovered that there is a seasonal trend in the net sales and cost of sales of Hershey's products. Using a Combination model to predict Net Sales TSLM2 model to predict Cost of Sales, both models reflected that sales and costs peak in Q3 and slump in Q2. The seasonal trend reflects a spike of sales in the holiday heavy months in Q3 and Q4, a moderate sales in Q1, and a slump in the summertime months during Q2. This reflects increase chocolate sales and costs of operations that correlate with holidays like Halloween, Christmas, and Valentines Day.
+
+The forecasting values for Net Sales and Cost of Sales:
+
+-   Q2 2024: Cost of Sales \$1532.371 M Net Sales \$2796.881 M
+-   Q3 2024: Cost of Sales \$1811.283 M Net Sales \$3282.364 M
+-   Q4 2024: Cost of Sales \$1805.500 M Net Sales \$3167.744 M
+-   Q1 2025: Cost of Sales \$1830.267 M Net Sales \$3439.584 M
+-   Q2 2025: Cost of Sales \$1717.648 M Net Sales \$3112.232 M
+-   Q3 2025: Cost of Sales \$2002.222 M Net Sales \$3607.611 M
+-   Q4 2025: Cost of Sales \$2002.101 M Net Sales \$3501.091 M
+
+**Implications for the Company:** With this information, we recommend that Hershey continue to decrease its cost of sales of chocolate products in Q2 and increase its cost of sales in Q3 and Q4 to reflect consumer demand. Additionally, we have seen improved sales in Q1, and the cost of sales should be increased to try to increase sales in this period. Alternatively, Hershey could use this information to create a new sales or marketing strategy to increase sales in the dips of Q2.
